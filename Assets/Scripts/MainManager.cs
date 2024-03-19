@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
+using System.IO;
+using TMPro;
 
 public class MainManager : MonoBehaviour
 {
@@ -12,12 +14,13 @@ public class MainManager : MonoBehaviour
 
     public Text ScoreText;
     public GameObject GameOverText;
+
+    public Text highScoreText;
     
     private bool m_Started = false;
     private int m_Points;
     
     private bool m_GameOver = false;
-
     
     // Start is called before the first frame update
     void Start()
@@ -36,6 +39,15 @@ public class MainManager : MonoBehaviour
                 brick.onDestroyed.AddListener(AddPoint);
             }
         }
+        SetHighScoreText();
+        GameManager.Instance.LoadHighScore();
+    }
+
+    [System.Serializable]
+    class SaveData
+    {
+        public int highScore;
+        public string highScoreName;
     }
 
     private void Update()
@@ -57,6 +69,14 @@ public class MainManager : MonoBehaviour
         {
             if (Input.GetKeyDown(KeyCode.Space))
             {
+                //Load the Json
+                string path = Application.persistentDataPath + "/highscore.json";
+                if (File.Exists(path))
+                {
+                    string json = File.ReadAllText(path);
+                    SaveData data = JsonUtility.FromJson<SaveData>(json);
+                }
+                
                 SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
             }
         }
@@ -68,9 +88,44 @@ public class MainManager : MonoBehaviour
         ScoreText.text = $"Score : {m_Points}";
     }
 
+    // Set the high score text
+    public void SetHighScoreText()
+    {
+        highScoreText.text = $"Best Score : {GameManager.Instance.highScoreName} : {GameManager.Instance.highScore}";
+    }
+
+
     public void GameOver()
     {
         m_GameOver = true;
         GameOverText.SetActive(true);
+
+        if(GameManager.Instance.playerName != null)
+        {
+            if (m_Points > GameManager.Instance.highScore)
+            {
+                GameManager.Instance.highScore = m_Points;
+                GameManager.Instance.highScoreName = GameManager.Instance.playerName;
+
+                string path = Application.persistentDataPath + "/highscore.json";
+                SaveData data = new SaveData
+                {
+                    highScore = GameManager.Instance.highScore,
+                    highScoreName = GameManager.Instance.highScoreName
+                };
+
+                string newJson = JsonUtility.ToJson(data);
+                File.WriteAllText(path, newJson);
+            
+            }
+        }
+        else
+        {
+            GameManager.Instance.highScore = m_Points;
+            GameManager.Instance.highScoreName = "Player";
+        }
     }
+
+
+
 }
